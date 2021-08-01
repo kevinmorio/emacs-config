@@ -1,612 +1,1109 @@
-* Kevin's Emacs Config
+#+TITLE: Kevin's Emacs configuration
+#+LAST_MODIFIED: [2021-07-18 Sun 17:28]
+#+STARTUP: indent
+
+* Todos
+** DONE Revise folder paths
+** TODO Don't save undo history and other temporary files in $XDG_CONFIG_HOME but in $XDG_CONFIG_DATA_HOME
+** DONE Add global shortcuts for org-agenda
+** DONE Efficient method for flyspell
+** DONE Remove org-roam-link highlight
+** DONE Adopt org-capture templates for new approach
+*** DONE Revise older notes to new format
+** TODO Add screenshot of setup
+** DONE Use org-expiry only in some files
+** TODO Silence warnings about unknown variables and functions
+** TODO Fix clarify template for use in agenda
+** DONE Automatically add new files to agenda
+** TODO Use customize interface for setting Org variables
+** DONE Create startup file for GTD
+** TODO Add note when moving from todo task to done task
+
+This doesn't seem to be possible directly.
+
+** DONE Create nested hydra for org-clock
+** TODO Implement custom initial folding of source code blocks
+
+See [[https://emacs.stackexchange.com/questions/44914/choose-individual-startup-visibility-of-org-modes-source-blocks][org babel - Choose individual startup visibility of org-mode's source blocks - Emacs Stack Exchange]].
+
+
+* Configuration
+
+** Libraries
+
+To make our life easier, we first load some libraries.
 
 #+begin_src emacs-lisp
+  (use-package dash
+    :config
+    ;; Enable syntax highlighting for dash functions
+    (eval-after-load 'dash '(dash-enable-font-lock)))
 
-;;; init.el --- Emacs configuration
-;;
-;; Copyright (C) 2020 Kevin Morio
-;; Licensed under MIT
-;;
-;; Author: Kevin Morio <kevin@morio.me>
-;;
-;; This file is NOT part of GNU Emacs.
-;;
-;; TODO
-;; - Revise folder paths
-;; - Don't save undo history and other temporary files in $XDG_CONFIG_HOME but in $xDG_CONFIG_DATA_HOME
-;; - Add global shortcuts for org-agenda
-;; - Efficient method for flyspell
-;; - Remove org-roam-link highlight
-;; - Adopt org-capture templates for new apporach
-
-
-
-;;;
-;;; Variable declarations
-;;;
-
-;; (defconst km-paths '(:recentf ,(expand-file-name "recentf" user-emacs-directory)
-;; 			      :backup ,(expand-file-name "backup" user-emacs-directory)
-;; 			      :autosave ,(expand-file-name "auto-save" user-emacs-directory)
-;; 			      :undo ,(expand-file-name "undo/" user-emacs-directory)))
-
-(defconst km-save-file-path (expand-file-name "recentf" user-emacs-directory))
-(defconst km-backup-path (expand-file-name "backup" user-emacs-directory))
-(defconst km-auto-save-path (expand-file-name "auto-save" user-emacs-directory))
-(defconst km-undo-path (expand-file-name "undo/" user-emacs-directory))
-
-;; (defconst km-bibliography-path "~/Nextcloud/Literature/Bibliography")
-(defconst km-bibliography-files (directory-files "~/Nextcloud/Literature/Bibliography" t "\\.bib"))
-(defconst km-library-path "~/Nextcloud/Literature")
-(defconst km-note-path "~/Nextcloud/Notes/Literature")
-(defconst km-journal-path "~/Nextcloud/Journal")
-(defconst km-knowledge-path "~/Nextcloud/Knowledge")
-
-;; Create directories if they do not exist.
-(unless (file-exists-p km-save-file-path)
-  (make-directory km-save-file-path))
-
-(unless (file-exists-p km-backup-path)
-  (make-directory km-backup-path))
-
-(unless (file-exists-p km-auto-save-path)
-  (make-directory km-auto-save-path))
-
-(unless (file-exists-p km-undo-path)
-  (make-directory km-undo-path))
-
-
-(defconst km-texbin-path "/Library/TeX/texbin")
-
-(when (file-exists-p km-texbin-path)
-  (add-to-list 'exec-path km-texbin-path)
-  (setenv "PATH" (concat km-texbin-path ":" (getenv "PATH"))))
-
-(defconst km-local-bin-path "/usr/local/bin")
-
-(when (file-exists-p km-local-bin-path)
-  (add-to-list 'exec-path km-local-bin-path)
-  (setenv "PATH" (concat km-local-bin-path ":" (getenv "PATH"))))
-
-(setenv "DICPATH" (concat (getenv "HOME") "/Library/Spelling"))
-
-;; Set language such that flyspell uses the correct dictionary.
-(setenv "LANG" "en_US.UTF-8")
-
-
-
-;; ;;;
-;; ;;; Packages
-;; ;;;
-;; 
-;; ;; Allow multiple Emacs versions to share the same repositories
-;; ;; using a build directory based on the current Emacs version.
-;; (setq straight-build-dir (concat "build/" emacs-version))
-;; 
-;; ;; Setup straight.el
-;; (defvar bootstrap-version)
-;; (let ((bootstrap-file
-;;        (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
-;;       (bootstrap-version 5))
-;;   (unless (file-exists-p bootstrap-file)
-;;     (with-current-buffer
-;;         (url-retrieve-synchronously
-;;          "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
-;;          'silent 'inhibit-cookies)
-;;       (goto-char (point-max))
-;;       (eval-print-last-sexp)))
-;;   (load bootstrap-file nil 'nomessage))
-;; 
-;; ;; Install use-package and required packages using straight
-;; (straight-use-package 'use-package)
-;; (straight-use-package 'diminish)
-;; (straight-use-package 'bind-key)
-;; 
-;; ;; Use straight.el by default for use-package
-;; (setq straight-use-package-by-default t)
-
-
-
-;;;
-;;; Builtin packages
-;;;
-
-;; Highlight matching pairs
-(use-package paren
-  :config
-  (show-paren-mode t))
-
-;; Highlight current line
-(use-package hl-line
-  ;; :custom-face
-  ;; (hl-line ((t (:background "#454545"))))
-  :config
-  (global-hl-line-mode t))
-
-;; (use-package ido
-;;   :config
-;;   (setq ido-enable-flex-matching t)
-;;   (setq ido-everywhere t)
-;;   (ido-mode t))
-
-(use-package display-line-numbers
-  ;; :custom-face
-  ;; (line-number-current-line ((t (:inherit line-number
-  ;; 					  :background "#454545"
-  ;; 					  :foreground "systemYellowColor"
-  ;; 					  :weight bold))))
-  :config
-  (setq-default display-line-numbers-width 3)
-  :hook
-  (prog-mode . display-line-numbers-mode))
-
-(use-package recentf
-  :config
-  (setq recentf-save-file (expand-file-name "recentf" km-save-file-path)
-	recentf-max-saved-items nil
-	recentf-max-menu-items 15)
-  (recentf-mode))
-
-
-
-;;;
-;;; Essential packages
-;;;
-
-(use-package evil
-  :config
-  (evil-mode t))
-
-(use-package which-key
-  :config
-  (which-key-mode t))
-
-(use-package magit)
-
-(use-package company
-  :config
-  (setq company-idle-delay 0.25)
-  (setq company-minimum-prefix-length 2)
-  (global-company-mode))
-
-(use-package ivy
-  :diminish
-  ;;  :bind (("C-c C-r" . ivy-resume))
-  :custom
-  (ivy-use-virtual-buffers t)
-  (ivy-count-format "(%d/%d): ")
-  :config
-  (ivy-mode))
-
-(use-package counsel
-  :after ivy
-  :config
-  (counsel-mode))
-
-(use-package swiper
-  :after ivy
-  :bind (("C-s" . swiper))
-  :config
-  (setq swiper-stay-on-quit t))
-
-;; Simple but effective sorting and filtering for Emacs.
-(use-package prescient
-  :config
-  (prescient-persist-mode))
-
-(use-package ivy-prescient
-  :after counsel
-  :config
-  (ivy-prescient-mode))
-
-(use-package company-prescient
-  :config
-  (company-prescient-mode))
-
-
-
-;;;
-;;; General settings
-;;;
-
-;; Disable blinking cursor
-(blink-cursor-mode nil)
-
-;; Smooth scrolling such that redisplay will never recenter point.
-(setq scroll-conservatively 101)
-
-;; Use y/n instead of yes/no
-(fset 'yes-or-no-p 'y-or-n-p)
-
-;; (load-theme 'wombat)
-
-;; Set default font
-(set-face-attribute 'default nil
-		    :family "PragmataPro Mono Liga"
-		    :height 155
-		    :weight 'normal
-       		    :width 'normal)
-
-;; Increase the line spacing for increased readability
-(setq-default line-spacing 0.3)
-
-(setq-default fill-column 80)
-
-;; Enable emoji, and stop the UI from freezing when trying to display them.
-(when (fboundp 'set-fontset-font)
-  (set-fontset-font t 'unicode "Apple Color Emoji" nil 'prepend))
-
-;; Enable ligatures on macOS port
-(when (fboundp 'mac-auto-operator-composition-mode)
-  ;; Remove '*' from composed characters to avoid issues with Org's indent mode.
-  (custom-set-variables
-   '(mac-auto-operator-composition-characters "!\"#$%&'()+,-./:;<=>?@[\\]^_`{|}~"))
-  (mac-auto-operator-composition-mode t))
-
-
-(add-to-list 'load-path "~/.config/emacs/lisp")
-					; (require 'pragmatapro-lig)
-					; (pragmatapro-lig-mode t)
-
-;; Disable bell sound
-(setq ring-bell-function 'ignore)
-
-;; Disable menubar, toolbar, and scrollbar
-(if (fboundp 'menu-bar-mode)
-    (menu-bar-mode -1))
-(if (fboundp 'tool-bar-mode)
-    (tool-bar-mode -1))
-(if (fboundp 'scroll-bar-mode)
-    (scroll-bar-mode -1))
-
-(when (window-system)
-  (set-frame-width (selected-frame) 120)
-  (set-frame-height (selected-frame) 60)
-  (set-frame-position (selected-frame) 50 30))
-
-
-;; Changes made in the configuration UI are stored in a different file
-(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
-
-(when (file-exists-p custom-file)
-  (load custom-file))
-
-;; To avoid cluttering each directory with backuo and auto-save files
-;; store them in a central plasce while only keeping the most recent copies
-;; and automatically deleting excessing backups.
-(setq backup-directory-alist `(("." . ,km-backup-path))
-      ;; Do not delink hardlinks
-      backup-by-copying t    
-      ;; Use version numbers as backups
-      version-control t
-      ;; Automatically delete excess backups
-      delete-old-versions t
-      ;; Keep 10 new versions
-      kept-new-versions 10
-      ;; Keep 5 old version
-      kept-old-versions 5)
-
-;; Set directory to store auto-saves.
-;; (setq auto-save-file-name-transforms `((".*" ,km-auto-save-path t)))
-
-;; Set directory to store undo history.
-(setq undo-tree-auto-save-history t
-      undo-tree-history-directory-alist `(("." . ,km-undo-path)))
-
-
-
-;;;
-;;; Visual enhancements
-;;;
-
-(use-package beacon
-  :config
-  (beacon-mode t))
-
-(use-package doom-themes
-  :config
-  (load-theme 'doom-dark+ t)
-
-  ;; Enable flashing mode-line on errors
-  ;; (doom-themes-visual-bell-config)
-
-  ;; TODO: This sets some undisired properties like hiding leading stars
-  ;; Corrects (and improve) org-mode's native fontification
-  ;; (doom-themes-org-config)
-  :custom
-  (doom-dark+-blue-modeline t)
-  ;; (doom-one-light-padded-modeline t)
-  (doom-one-light-brighter-modeline t)
-  (doom-one-light-brighter-comments t))
-
-(use-package doom-modeline
-  :init
-  (doom-modeline-mode t))
-
-;;;
-;;; Project management
-;;;
-
-(use-package projectile
-  :config
-  (define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
-  (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
-  (projectile-mode t))
-
-(use-package counsel-projectile
-  :config
-  (counsel-projectile-mode t))
-
-
-
-;;;
-;;; Indentation
-;;;
-
-(use-package aggressive-indent
-  :hook
-  (emacs-lisp-mode . aggressive-indent-mode))
-
-
-
-;;;
-;;; Note taking and knowledge aggregation
-;;;
-
-;; Spell checking
-(use-package flyspell
-  :straight nil
-  :config
-  (setq ispell-dictionary "en_US")
-  :hook
-  (text-mode . flyspell-mode))
-
-(use-package flyspell-correct-ivy
-  :bind
-  (:map flyspell-mode-map
-	(("C-;" . flyspell-correct-wrapper)))
-	:custom
-	(flyspell-correct-interface #'flyspell-correct-ivy))
-
-
-;; (use-package visual-fill-column)
-
-(setq reftex-default-bibliography km-bibliography-files)
-
-(setq org-ref-default-bibliography km-bibliography-files
-      org-ref-bibliography-notes km-note-path
-      org-ref-pdf-directory km-library-path)
-
-(setq bibtex-completion-bibliography km-bibliography-files
-      bibtex-completion-notes-path km-note-path
-      bibtex-completion-library-path km-library-path
-      bibtex-completion-pdf-field "file")
-
-(defun my/org-ref-open-pdf-at-point ()
-  "Open the pdf for bibtex key under point if it exists."
-  (interactive)
-  (let* ((results (org-ref-get-bibtex-key-and-file))
-         (key (car results))
-	 (pdf-file (car (bibtex-completion-find-pdf key))))
-    (message "my/org-ref-open-pdf-at-point %s" key)
-    (if (file-exists-p pdf-file)
-	(org-open-file pdf-file)
-      (message "No PDF found for %s" key))))
-
-(setq org-ref-open-pdf-function 'my/org-ref-open-pdf-at-point)
-
-(setq org-ref-completion-library 'org-ref-ivy-cite)
-
-(use-package org
-  :mode
-  ("\\.org\\'" . org-mode)
-  :custom
-  (org-return-follow-link t)
-  (org-babel-load-languages
-   '((emacs-lisp . t)
-     (shell . t)
-     (python . t)))
-  (org-confirm-babel-evaluate nil)
-  (org-start-indented t)
-  (org-preview-latex-image-directory (expand-file-name "ltximg" (temporary-file-directory)))
-  (org-preview-latex-default-process 'dvisvgm)
-  :bind (("C-c t" . counsel-org-tags)
-	 ("C-c h" . org-metaleft)
-	 ("C-c j" . org-metadown)
-	 ("C-c k" . org-metaup)
-	 ("C-c l" . org-metaright))
-  :custom-face 
-  (variable-pitch ((t (:family "PragmataPro Liga"))))
-  (fixed-pitch ((t (:family "PragmataPro Mono Liga"))))
-  :config
-  (add-to-list 'org-structure-template-alist '("t" . "theorem"))
-  (add-to-list 'org-structure-template-alist '("d" . "definition"))
-  (add-to-list 'org-structure-template-alist '("co" . "corollary"))
-  (add-to-list 'org-structure-template-alist '("lm" . "lemma"))
-  (setq org-agenda-custom-commands
-	'(("c" tags "+context"
-	   ((org-agenda-prefix-format "")))))
-  (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.25))
-  (require 'org-tempo)
-  (defun km/style-org ()
-    (variable-pitch-mode t)
-    ;; (visual-line-mode)
-    ;; (visual-fill-column-mode)
-    (mapc
-     (lambda (face)
-       (set-face-attribute face nil :family "PragmataPro Mono Liga"))
-     (list 'org-code
-	   'org-block
-	   'org-table
-	   'org-verbatim
-	   'org-block-begin-line
-	   'org-block-end-line
-	   'org-meta-line
-	   'org-document-info-keyword))
-    (set-face-attribute 'org-document-title nil :weight 'bold :height 240)
-    (set-face-attribute 'org-document-info-keyword nil)
-    ;; (set-face-attribute 'org-done nil :strike-through t :weight 'bold)
-    ;; (set-face-attribute 'org-headline-done nil :strike-through t)
-    (set-face-attribute 'org-level-1 nil :weight 'bold)
-    (set-face-attribute 'org-level-2 nil :weight 'bold)
-    (set-face-attribute 'org-level-3 nil :weight 'bold))
+  (use-package f)
+#+end_src
+
+Use hydras for efficient keybindings.
+
+#+begin_src emacs-lisp
+  (use-package hydra
+    :demand t)
+#+end_src
+
+
+** Variable definitions
+
+#+begin_src emacs-lisp
+  ;; (defconst km-paths '(:recentf ,(expand-file-name "recentf" user-emacs-directory)
+  ;; 			      :backup ,(expand-file-name "backup" user-emacs-directory)
+  ;; 			      :autosave ,(expand-file-name "auto-save" user-emacs-directory)
+  ;; 			      :undo ,(expand-file-name "undo/" user-emacs-directory)))
+
+  (defconst km-save-file-path (expand-file-name "recentf" user-emacs-directory))
+  (defconst km-backup-path (expand-file-name "backup" user-emacs-directory))
+  (defconst km-auto-save-path (expand-file-name "auto-save" user-emacs-directory))
+  (defconst km-undo-path (expand-file-name "undo/" user-emacs-directory))
+
+  (defconst km-bibliography-files (directory-files "~/Nextcloud/Literature/Bibliography" t "\\.bib"))
+
+  (defconst km-library-path "~/Nextcloud/Literature")
+  (defconst km-note-path "~/Nextcloud/Notes/Literature")
+
+  (defconst km/org-journal-dir "~/Nextcloud/org/journal")
+  (defconst km/org-roam-dir "~/Nextcloud/org/slipbox")
+
+  ;; Create directories if they do not exist.
+  (unless (file-exists-p km-save-file-path)
+    (make-directory km-save-file-path))
+
+  (unless (file-exists-p km-backup-path)
+    (make-directory km-backup-path))
+
+  (unless (file-exists-p km-auto-save-path)
+    (make-directory km-auto-save-path))
+
+  (unless (file-exists-p km-undo-path)
+    (make-directory km-undo-path))
+
+  (defconst km-texbin-path "/Library/TeX/texbin")
+
+  (when (file-exists-p km-texbin-path)
+    (add-to-list 'exec-path km-texbin-path)
+    (setenv "PATH" (concat km-texbin-path ":" (getenv "PATH"))))
+
+  (defconst km-local-bin-path "/usr/local/bin")
+
+  (when (file-exists-p km-local-bin-path)
+    (add-to-list 'exec-path km-local-bin-path)
+    (setenv "PATH" (concat km-local-bin-path ":" (getenv "PATH"))))
+
+  (setenv "DICPATH" (concat (getenv "HOME") "/Library/Spelling"))
+
+  ;; Set language such that flyspell uses the correct dictionary.
+  (setenv "LANG" "en_US.UTF-8")
+#+end_src
+
+** Unclutter
+
+#+begin_src emacs-lisp
+  ;; Disable menubar, toolbar, and scrollbar
+  (if (fboundp 'menu-bar-mode)
+      (menu-bar-mode -1))
+  (if (fboundp 'tool-bar-mode)
+      (tool-bar-mode -1))
+  (if (fboundp 'scroll-bar-mode)
+      (scroll-bar-mode -1))
+
+  ;; Don't show startup screen or show info about Emacs in the echo area
+  (setq inhibit-startup-screen t)
+  (put 'inhibit-startup-echo-area-message 'saved-value t)
+  (setq inhibit-startup-echo-area-message (user-login-name))
+
+  ;; Hide buffer title and icon in titlebar
+  (setq frame-title-format nil)
+  (setq ns-use-proxy-icon nil)
+
+  ;; Disable bell sound
+  (setq ring-bell-function 'ignore)
+
+  ;; Disable blinking cursor
+  (blink-cursor-mode -1)
+
+  ;; Remove internal border (shows as gap between modeline and window border)
+  (set-frame-parameter nil 'internal-border-width 0)
+
+  ;; Use pixels instead of chars to set the frame size
+  (setq frame-resize-pixelwise t)
+
+  ;; Do not use M-TAB for flyspell since it is used by Org mode.
+  (setq flyspell-use-meta-tab nil)
+#+end_src
+
+** General
+
+#+begin_src emacs-lisp
+  ;; Automatically reload non-modified buffers when changed on disk.
+  (global-auto-revert-mode t)
+
+  ;; Use the trash to delete files
+  (setq delete-by-moving-to-trash t)
+
+  ;; Use y/n instead of yes/no
+  (fset 'yes-or-no-p 'y-or-n-p)
+
+  ;; Highlight matching pairs
+  (use-package paren
+    :config
+    (show-paren-mode t))
+
+  ;; Highlight current line
+  (use-package hl-line
+    ;; :custom-face
+    ;; (hl-line ((t (:background "#454545"))))
+    :config
+    (global-hl-line-mode t))
+
+  (use-package display-line-numbers
+    ;; :custom-face
+    ;; (line-number-current-line ((t (:inherit line-number
+    ;; 					  :background "#454545"
+    ;; 					  :foreground "systemYellowColor"
+    ;; 					  :weight bold))))
+    :config
+    (setq-default display-line-numbers-width 3)
+    :hook
+    (prog-mode . display-line-numbers-mode))
+
+  (use-package recentf
+    :config
+    (setq recentf-save-file (expand-file-name "recentf" km-save-file-path)
+          recentf-max-saved-items nil
+          recentf-max-menu-items 15)
+    (recentf-mode))
+
+#+end_src
+
+** Font settings
+
+#+begin_src emacs-lisp
+    ;; Set default font
+  (set-face-attribute 'default nil
+                        :family "PragmataPro Mono Liga"
+                        :height 155
+                        :weight 'normal
+                        :width 'normal)
+
+    ;; Increase the line spacing for increased readability
+    (setq-default line-spacing 0.3)
+
+    ;; Enable emoji, and stop the UI from freezing when trying to display them.
+    (when (and (fboundp 'set-fontset-font)
+               (member "Apple Color Emoji" (font-family-list)))
+      (set-fontset-font t 'unicode "Apple Color Emoji" nil 'prepend))
+
+    ;; Enable ligatures on macOS port
+    (when (fboundp 'mac-auto-operator-composition-mode)
+      ;; Remove '*' from composed characters to avoid issues with Org's indent mode.
+      (custom-set-variables
+       '(mac-auto-operator-composition-characters "!\"#$%&'()+,-./:;<=>?@[\\]^_`{|}~"))
+      (mac-auto-operator-composition-mode t))
+
+#+end_src
+
+** Evil
+
+#+begin_src emacs-lisp
+         ;;;
+         ;;; Essential packages
+         ;;;
+
+  (use-package evil
+    :init
+    (setq evil-want-fine-undo t
+          evil-undo-system 'undo-redo
+          evil-move-beyond-eol t)
+    (evil-mode t))
+
+  (use-package which-key
+    :config
+    (which-key-mode t))
+
+  (use-package magit
+    :config
+    ;; Show fine-grained diff output.
+    (setq magit-diff-refine-hunk 'all))
+
+  (use-package company
+    :config
+    (setq company-idle-delay 0.25)
+    (setq company-minimum-prefix-length 2)
+    (global-company-mode))
+
+  (use-package ivy
+    :diminish
+    ;;  :bind (("C-c C-r" . ivy-resume))
+    :custom
+    (ivy-use-virtual-buffers t)
+    (ivy-count-format "(%d/%d): ")
+    :custom-face
+    ;; Since ivy blends the background color with the face's background color
+    ;; this is not really effective.
+    (ivy-current-match ((t (:inherit 'highlight))))
+    :config
+    ;; Make the prompt line selectable.
+    (setq ivy-use-selectable-prompt t)
+    (ivy-mode))
+
+  (use-package counsel
+    :after ivy
+    :config
+    (counsel-mode))
+
+  (use-package swiper
+    :after ivy
+    :bind (("C-s" . swiper))
+    :config
+    (setq swiper-stay-on-quit t))
+
+  ;; Simple but effective sorting and filtering for Emacs.
+  (use-package prescient
+    :config
+    (prescient-persist-mode))
+
+  (use-package ivy-prescient
+    :after counsel
+    :config
+    (ivy-prescient-mode))
+
+  (use-package company-prescient
+    :config
+    (company-prescient-mode))
+
+
+
+         ;;;
+         ;;; General settings
+         ;;;
+
+  ;; Smooth scrolling such that redisplay will never recenter point.
+  (setq scroll-conservatively 101)
+
+  (setq-default fill-column 80)
+
+  (add-to-list 'load-path "~/.config/emacs/lisp")
+                                          ; (require 'pragmatapro-lig)
+                                          ; (pragmatapro-lig-mode t)
+
+  (when (window-system)
+    (set-frame-width (selected-frame) 120)
+    (set-frame-height (selected-frame) 60)
+    (set-frame-position (selected-frame) 50 30))
+
+
+  ;; Changes made in the configuration UI are stored in a different file
+  (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+
+  (when (file-exists-p custom-file)
+    (load custom-file))
+
+  ;; To avoid cluttering each directory with backuo and auto-save files
+  ;; store them in a central plasce while only keeping the most recent copies
+  ;; and automatically deleting excessing backups.
+  (setq backup-directory-alist `(("." . ,km-backup-path))
+        ;; Do not delink hardlinks
+        backup-by-copying t
+        ;; Use version numbers as backups
+        version-control t
+        ;; Automatically delete excess backups
+        delete-old-versions t
+        ;; Keep 10 new versions
+        kept-new-versions 10
+        ;; Keep 5 old version
+        kept-old-versions 5)
+
+  ;; Set directory to store auto-saves.
+  ;; Defaults to ~temporary-file-directory~.
+  ;; (setq auto-save-file-name-transforms `((".*" ,km-auto-save-path t)))
+
+  ;; Set directory to store undo history.
+  (setq undo-tree-auto-save-history t
+        undo-tree-history-directory-alist `(("." . ,km-undo-path)))
+
+
+
+         ;;;
+         ;;; Visual enhancements
+         ;;;
+
+  ;; (use-package beacon
+  ;;   :config
+  ;;   (beacon-mode t))
+
+  (use-package doom-themes
+    :config
+    ;; (load-theme 'doom-dark+ t)
+    ;; (load-theme 'doom-nord-light)
+    (load-theme 'doom-nord)
+
+    ;; Enable flashing mode-line on errors
+    ;; (doom-themes-visual-bell-config)
+
+    ;; TODO: This sets some undesired properties like hiding leading stars
+    ;; Corrects (and improve) org-mode's native fontification
+    (doom-themes-org-config)
+    :custom
+    (doom-dark+-blue-modeline t)
+    ;; (doom-one-light-padded-modeline t)
+    (doom-one-light-brighter-modeline t)
+    (doom-one-light-brighter-comments t)
+    (doom-nord-light-brighter-modeline t)
+    (doom-nord-light-brighter-comments t)
+    (doom-nord-light-region-highlight 'snowstorm)
+    :custom-face
+    ;; Don't extend selection face past EOL.
+    (region ((t (:extend nil)))))
+
+  (doom-themes-set-faces nil
+    '(org-headline-done :foreground (doom-lighten base5 0.17))
+    '(org-column-title :underline nil :inherit 'highlight))
+
+
+  (use-package doom-modeline
+    :init
+    (doom-modeline-mode t))
+
+         ;;;
+         ;;; Project management
+         ;;;
+
+  (use-package projectile
+    :config
+    (define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
+    (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+    (projectile-mode t))
+
+  (use-package counsel-projectile
+    :config
+    (counsel-projectile-mode t))
+
+
+
+         ;;;
+         ;;; Indentation
+         ;;;
+
+  (use-package adaptive-wrap
+    :hook
+    (text-mode . adaptive-wrap-prefix-mode)
+    (text-mode . visual-line-mode))
+
+     (use-package aggressive-indent
+       :hook
+       (emacs-lisp-mode . aggressive-indent-mode))
+
+
+
+         ;;;
+         ;;; Note taking and knowledge aggregation
+         ;;;
+
+  ;; Spell checking
+  (use-package flyspell
+    :straight nil
+    :config
+    (setq ispell-program-name (executable-find "hunspell")
+          ispell-dictionary "en_US")
+    :hook
+    (text-mode . flyspell-mode))
+
+  (use-package flyspell-correct-ivy
+    :bind
+    (:map flyspell-mode-map
+          (("C-;" . flyspell-correct-wrapper)))
+    :custom
+    (flyspell-correct-interface #'flyspell-correct-ivy))
+
+
+  ;; (use-package visual-fill-column)
+
+#+end_src
+
+** Org
+
+The default behavior of ~undo-tree~ when performing a redo moves the cursor to the first line of change.
+For example, if redoing a state change in a Org heading which changes the parent's statistics cookie, ~undo-tree~ jumps to the parent.
+To avoid this, we wrap ~undo-tree-redo~ into ~save-excursion~.
+
+#+begin_src emacs-lisp
+  (setq reftex-default-bibliography km-bibliography-files)
   
-  (add-hook 'org-mode-hook #'km/style-org)
-  (add-hook 'org-capture-mode-hook #'evil-insert-state)
-  (add-hook 'org-agenda-mode-hook #'hack-dir-local-variables-non-file-buffer))
+  (setq org-ref-default-bibliography km-bibliography-files
+        org-ref-bibliography-notes km-note-path
+        org-ref-pdf-directory km-library-path)
+  
+  (setq bibtex-completion-bibliography km-bibliography-files
+        bibtex-completion-notes-path km-note-path
+        bibtex-completion-library-path km-library-path
+        bibtex-completion-pdf-field "file")
+  
+  (defun my/org-ref-open-pdf-at-point ()
+    "Open the pdf for bibtex key under point if it exists."
+    (interactive)
+    (let* ((results (org-ref-get-bibtex-key-and-file))
+           (key (car results))
+           (pdf-file (car (bibtex-completion-find-pdf key))))
+      (message "my/org-ref-open-pdf-at-point %s" key)
+      (if (file-exists-p pdf-file)
+          (org-open-file pdf-file)
+        (message "No PDF found for %s" key))))
+  
+  (setq org-ref-open-pdf-function 'my/org-ref-open-pdf-at-point)
+  
+  (setq org-ref-completion-library 'org-ref-ivy-cite)
+  
+  (defun km/redo-at-point (&optional arg)
+    "Undo the last ARG undos without changing the current point."
+    (interactive "*p")
+    (save-excursion
+      (undo-tree-redo arg)))
+  
+  (defun km/org-expiry-insinuate-local ()
+    "Add LOCAL hooks and activate advices for org-expiry."
+    (interactive "P")
+    (ad-activate 'org-schedule)
+    (ad-activate 'org-time-stamp)
+    (ad-activate 'org-deadline)
+    (add-hook 'org-insert-heading-hook 'org-expiry-insert-created 0 t)
+    (add-hook 'org-after-todo-state-change-hook 'org-expiry-insert-created 0 t)
+    (add-hook 'org-after-tags-change-hook 'org-expiry-insert-created 0 t))
+  
+  (defun km/org-expiry-insinuate-in-file ()
+    "Calls `org-expiry-insinuate` when the `auto-expiry` option is set to `t` in the file.
+       For example, '#+OPTIONS: auto-expiry:t'"
+    (catch 'found
+      (dolist (value (cdr (assoc "OPTIONS" (org-collect-keywords '("OPTIONS")))))
+        (when (string-match "auto-expiry:t" value)
+          (km/org-expiry-insinuate-local)
+          (message "org-expiry insinuated for current buffer (auto-expiry:t)")
+          (throw 'found t)))
+      nil))
+  
+  (defun km/org-capture-maybe-create-id ()
+    "Create id if `create-id` property is set on capture template."
+    (when (org-capture-get :create-id)
+      (org-id-get-create)))
+  
+  (defun km/org-capture-maybe-insert-created ()
+    "Insert CREATED property if `insert-created` property is set on capture template."
+    (when (org-capture-get :insert-created)
+      (org-expiry-insert-created)))
+  
+  (defun km/org-babel-redisplay-images ()
+    "Redisplay inline images when there are overlays in the current buffer."
+    (when org-inline-image-overlays
+      (org-redisplay-inline-images)))
+  
+  (use-package org
+    ;; :straight org-plus-contrib
+    :mode
+    ("\\.org\\'" . org-mode)
+    :custom
+    (org-return-follow-link t)
+    (org-babel-load-languages
+     '((emacs-lisp . t)
+       (shell . t)
+       (python . t)
+       (dot .)))
+    (org-confirm-babel-evaluate nil)
+    (org-preview-latex-image-directory (expand-file-name "ltximg" (temporary-file-directory)))
+    (org-preview-latex-default-process 'dvisvgm)
+    (org-agenda-block-separator ?─)
+    (org-agenda-tags-column 0)
+    (org-image-actual-width nil)
+    ;; Expand invisible region and show error before change.
+    (org-catch-invisible-edits 'show-and-error)
+    ;; Demote sequence for plain lists ('-' -> '+' -> '-')
+    (org-list-demote-modify-bullet '(("-" . "+") ("+" . "-")))
+    (org-id-link-to-org-use-id 'create-if-interactive-and-no-custom-id)
+    (org-attach-id-dir "~/Nextcloud/org/data")
+    (org-attach-store-link-p 'attached)
+    (org-archive-location "~/Nextcloud/org/archive/%s_archive::")
+    (org-highlight-sparse-tree-matches nil)
+    :bind (("C-c t" . counsel-org-tags)
+           ("C-c h" . org-metaleft)
+           ("C-c j" . org-metadown)
+           ("C-c k" . org-metaup)
+           ("C-c l" . org-metaright)
+           ("C-c r" . km/redo-at-point))
+    :custom-face
+    (variable-pitch ((t (:family "PragmataPro Liga"))))
+    (fixed-pitch ((t (:family "PragmataPro Mono Liga"))))
+    :config
+    (setq org-tags-column 0)
+    (require `org-expiry)
+    ;; (org-expiry-insinuate)
+    (setq org-expiry-inactive-timestamps t)
+    (add-to-list 'org-structure-template-alist '("t" . "theorem"))
+    (add-to-list 'org-structure-template-alist '("d" . "definition"))
+    (add-to-list 'org-structure-template-alist '("co" . "corollary"))
+    (add-to-list 'org-structure-template-alist '("lm" . "lemma"))
+    (setq org-agenda-custom-commands
+          '(("c" tags "+context"
+             ((org-agenda-prefix-format "")))))
+    (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.25))
+    (require 'org-tempo)
+    (defun km/style-org ()
+      (variable-pitch-mode t)
+      ;; (visual-line-mode)
+      ;; (visual-fill-column-mode)
+      (mapc
+       (lambda (face)
+         (set-face-attribute face nil :family "PragmataPro Mono Liga"))
+       (list 'org-code
+             'org-block
+             'org-table
+             'org-verbatim
+             'org-block-begin-line
+             'org-block-end-line
+             'org-meta-line
+             'org-document-info-keyword))
+      (set-face-attribute 'org-document-title nil :weight 'bold :height 240)
+      (set-face-attribute 'org-document-info-keyword nil)
+      ;; (set-face-attribute 'org-done nil :strike-through t :weight 'bold)
+      ;; (set-face-attribute 'org-headline-done nil :strike-through t)
+      (set-face-attribute 'org-level-1 nil :weight 'bold)
+      (set-face-attribute 'org-level-2 nil :weight 'bold)
+      (set-face-attribute 'org-level-3 nil :weight 'bold)
+      (set-face-attribute 'secondary-selection nil :background 'unspecified :foreground "red1" :weight 'bold))
+  
+    (add-hook 'org-mode-hook #'km/org-expiry-insinuate-in-file)
+    (add-hook 'org-mode-hook #'km/style-org)
+    (add-hook 'org-capture-mode-hook #'evil-insert-state)
+    (add-hook 'org-capture-mode-hook #'km/org-capture-maybe-create-id)
+    (add-hook 'org-capture-mode-hook #'km/org-capture-maybe-insert-created)
+    (add-hook 'org-agenda-mode-hook #'hack-dir-local-variables-non-file-buffer)
+    (add-hook 'org-babel-after-execute-hook #'km/org-babel-redisplay-images))
+  
+    ;;; Auto update 'LAST_MODIFIED' property in org files if it is present in the first 8 lines.
+    (require 'time-stamp)
+  (setq time-stamp-pattern (format "#\\+LAST_MODIFIED: %s$" (regexp-quote (org-time-stamp-format t t))))
+  (add-hook 'write-file-functions 'time-stamp)
+  
+  (use-package org-contrib)
+#+end_src
 
-;;; Auto update 'LAST_MODIFIED' property in org files if it is present in the first 8 lines.
-(require 'time-stamp)
-(setq time-stamp-pattern (format "#\\+LAST_MODIFIED: %s$" (cdr org-time-stamp-formats)))
-(add-hook 'write-file-functions 'time-stamp)
+*** GTD setup
+
+To easily change the storage locations of the different files, we store them in variables.
+
+#+begin_src emacs-lisp
+  (defvar km/org-directory        "~/Nextcloud/org"                     "Primary org directory")
+  (defvar km/org-journal-file     "~/Nextcloud/org/journal/journal.org" "Destination of the capture process")
+  (defvar km/org-resources-dir    "~/Nextcloud/org/resources"           "Directory of resources")
+  (defvar km/org-gtd-directory    "~/Nextcloud/org/gtd"                 "Primary GTD directory")
+  (defvar km/org-gtd-inbox-file   "~/Nextcloud/org/gtd/inbox.org"       "Destination of the capture process")
+  (defvar km/org-gtd-next-file    "~/Nextcloud/org/gtd/next.org"         "Next actions and small projects")
+  (defvar km/org-gtd-someday-file "~/Nextcloud/org/gtd/someday.org"     "Someday / maybe list and possible future projects")
+  (defvar km/org-gtd-media-file   "~/Nextcloud/org/gtd/media.org"       "Bookmarks of anything to checkout in the future")
+  (defvar km/org-gtd-projects-dir "~/Nextcloud/org/gtd/projects"        "Directory of project actions and notes")
+#+end_src
+
+Specify the files which should be included in the agenda.
+
+#+begin_src emacs-lisp
+  (setq org-agenda-files (directory-files-recursively km/org-directory org-agenda-file-regexp))
+  (add-hook 'org-agenda-mode-hook (lambda ()
+                                    (directory-files-recursively km/org-directory org-agenda-file-regexp)
+                                    (message "org-agenda-files updated")))
+
+  ;; (setq org-agenda-files (-map #'f-short
+  ;; 			     (f--directories km/org-directory
+  ;; 					     (and (not (f-hidden? it))
+  ;; 						  (not (s-matches? ".git" it))
+  ;; 						  (not (f-descendant-of? it org-attach-directory))) t)))
+#+end_src
+
+#+begin_src emacs-lisp
+  (defun km/org-compare-timestamps (a b)
+    "Compare two Org timestamps `A' and `B' and return -1, nil, or 1."
+    (cond ((time-less-p (org-time-string-to-time a)
+                        (org-time-string-to-time b))
+           -1)
+          ((time-equal-p (org-time-string-to-time a)
+                         (org-time-string-to-time b))
+           nil)
+          (t 1)))
+
+  (defun km/org-compare-timestamp-property (prop)
+    "Compare two `org-mode' agenda entries, 'A' and 'B' by the date in PROP.
+
+    If 'A' is before 'B', return -1. If 'A' is after 'B' return 1. If they are equal return nil."
+    `(lambda (a b)
+       (let* ((a-pos (get-text-property 0 'org-marker a))
+              (b-pos (get-text-property 0 'org-marker b))
+              (a-date (or (org-entry-get a-pos ,prop)
+                          (format-time-string (org-time-stamp-format t t))))
+              (b-date (or (org-entry-get b-pos ,prop)
+                          (format-time-string (org-time-stamp-format t t)))))
+         (km/org-compare-timestamps a-date b-date))))
+
+  (setq org-agenda-skip-scheduled-if-done t
+        org-agenda-skip-deadline-if-done t)
+
+  ;; Exclude 'project' tags  from inheritance
+  (setq org-tags-exclude-from-inheritance '("project"))
+
+  (setq org-agenda-custom-commands
+        '(("d" "Default GTD dashboard"
+           ((agenda ""
+                    ((org-agenda-prefix-format " %i %-20:c%?-20t% s")))
+            (todo "NEXT"
+                  ((org-agenda-overriding-header "Next Actions")
+                   (org-agenda-cmp-user-defined (km/org-compare-timestamp-property "CREATED"))
+                   (org-agenda-sorting-strategy '(user-defined-up))
+                   (org-agenda-prefix-format " %i %-25:c")))
+            (todo "WAITING|DELEGATED|HOLD"
+                  ((org-agenda-overriding-header "Waiting / Delegated / Hold Actions")
+                   (org-agenda-cmp-user-defined (km/org-compare-timestamp-property "CREATED"))
+                   (org-agenda-sorting-strategy '(user-defined-up))
+                   (org-agenda-prefix-format " %i %-25:c")))
+            (tags "inbox"
+                  ((org-agenda-overriding-header "To Clarify")
+                   (org-agenda-prefix-format "  ")))
+            (tags "project"
+                  ((org-agenda-overriding-header "Projects")
+                   (org-agenda-prefix-format " %i %-25:c")))))
+          ("b" "Monthly burndown" agenda ""
+           ((org-agenda-span 'month)
+            (org-agenda-start-day "-14d")
+            (org-agenda-start-with-log-mode '(closed clock))
+            ;; (org-agenda-time-grid nil)
+            (org-agenda-overriding-header "Monthly burndown")
+            (org-agenda-prefix-format " %i %-25:c%?-25t% s")))))
+#+end_src
+
+Next, I define global ~TODO~ states.
+See [[https://orgmode.org/manual/Tracking-TODO-state-changes.html#Tracking-TODO-state-changes][Tracking TODO state changes (The Org Manual)]] for more details on the format.
+
+#+begin_src emacs-lisp
+;;  (setq org-todo-keywords
+;;        '((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d@)")
+;;          (sequence "WAITING(w@/!)" "DELEGATED(d@/!)" "HOLD(h@/!)" "|" "CANCELED(c@/!)")))
+#+end_src
+
+Since the keys for the different todo keywords can be easily remembered and are not changed often, we do not need to show a selection window.
+
+#+begin_src emacs-lisp
+  (setq org-use-fast-todo-selection 'expert)
+#+end_src
+
+Use capture templates to easily create inbox items or next actions.
+Capture mode is invoked with ~C-c c~
+
+#+begin_src emacs-lisp
+  (global-set-key (kbd "C-c c") 'org-capture)
+
+  ;; (defun km/org-get-subtree ()
+  ;;   "Returns the subtree at point."
+  ;;   (interactive)
+  ;;   (unless (derived-mode-p 'org-mode)
+  ;;     (user-error "This function can only be called in org-mode."))
+  ;;   (save-excursion
+  ;;     (org-mark-subtree)
+  ;;     (let* ((beg (region-beginning))
+  ;;            (end (region-end))
+  ;;            (subtree (buffer-substring-no-properties (region-beginning) (region-end))))
+  ;;       (deactivate-mark)
+  ;;       (delete-region beg end)
+  ;;       ;; Store subtree in case the capture is aborted.
+  ;;       (org-capture-put :original-subtree subtree)
+  ;;       subtree)))
+
+  ;; (defun km/org-insert-next ()
+  ;;   (interactive)
+  ;;   (with-current-buffer (current-buffer)
+  ;;     (org-with-wide-buffer
+  ;;      (org-back-to-heading))))
+
+  (setq org-capture-templates
+        `(("i" "Inbox" entry (file+heaedline ,km/org-gtd-inbox-file "Inbox")
+           "* %?"
+           :insert-created t
+           :empty-lines 1)
+          ;;        ("c" "Clarify" plain (function km/org-insert-next)
+          ;;         "%(with-current-buffer (org-capture-get :original-buffer) (km/org-get-subtree))")
+          ("n" "Next" entry (file+headline ,km/org-gtd-next-file "Next Actions")
+           "* NEXT %?\n:PROPERTIES:\n:CREATED: %U
+  :TRIGGER: children todo!(NEXT) promote! chain!(TRIGGER)\n:END:\n\n"
+           :empty-lines 1)
+          ("s" "Someday" entry (file+headline ,km/org-gtd-someday-file "Someday")
+           "* SOMEDAY %?"
+           :insert-created t
+           :empty-lines 1)
+          ("j" "Journal" entry (file+olp+datetree ,km/org-journal-file)
+           "* %<%H:%M> %?"
+           :jump-to-captured t
+           :clock-in t
+           :insert-created t)))
+
+  ;; (defun km/org-capture-finalize ()
+  ;;   (if (string= (org-capture-get :key) "c")
+  ;;       (if org-note-abort
+  ;;           (with-current-buffer (org-capture-get :original-buffer)
+  ;;             (progn
+  ;;               (insert (org-capture-get :original-subtree))))
+  ;;         ;;              (goto-char (org-capture-get :original-pos))))
+  ;;         (with-current-buffer (org-capture-get :buffer)
+  ;;           (progn
+  ;;             (goto-char (org-capture-get :insertion-point))
+  ;;             (back-to-indentation))))))
+  ;; (setq org-capture-after-finalize-hook nil)
+  ;; (add-hook 'org-capture-after-finalize-hook 'km/org-capture-finalize)
+#+end_src
+
+**** Refile setup
+
+During daily or weekly review, the entries in the inbox are refiled to their destination.
+The refile targets include the current file and any file of the agenda files up to 9 levels deep.
+Headlines with a done todo keyword are excluded.
+
+#+begin_src emacs-lisp
+  (setq km/org-gtd-project-targets (->> (directory-files-recursively km/org-gtd-projects-dir org-agenda-file-regexp)
+                                        (--map `(,it :maxlevel . 9))))
+
+  (setq km/org-resources-targets (->> (directory-files-recursively km/org-resources-dir org-agenda-file-regexp)
+                                      (--map `(,it :maxlevel . 9))))
+
+  (setq org-refile-targets (append (list `(,km/org-gtd-next-file :maxlevel . 9)
+                                         `(,km/org-gtd-someday-file :level . 0)
+                                         `(,km/org-gtd-media-file :maxlevel . 2))
+                                   km/org-gtd-project-targets
+                                   km/org-resources-targets))
+
+  (defun km/verify-refile-target ()
+    "Exclude headlines with a done todo state from refile targets."
+    (not (member (nth 2 (org-heading-components)) org-done-keywords)))
+
+  (setq org-refile-target-verify-function 'km/verify-refile-target)
+
+  (setq org-refile-use-outline-path 'file
+        org-outline-path-complete-in-steps nil
+        org-refile-allow-creating-parent-nodes 'confirm)
+#+end_src
 
 
-(use-package org-ref
-  :config
-  (setq org-ref-notes-function 'org-ref-notes-function-many-files)
-  :after counsel)
+**** Quick refiling using hydras
 
-(defun my/org-ref-ivy-open-note (&optional arg)
-  "ivy function for opening a note"
-  (interactive "P")
-  (setq org-ref-bitex-files (org-ref-find-bibliography))
-  (setq org-ref-ivy-cite-marked-candidates '())
+Implementing the GTD approach is all about being fast to put the "stuff" where it belongs.
+To move things around, we define a hydra.
 
-  (ivy-read "Open: " (orhc-bibtex-candidates)
-	    :require-match t
-	    :keymap org-ref-ivy-cite-keymap
-	    :re-builder org-ref-ivy-cite-re-builder
-	    :action 'or-ivy-bibtex-open-notes
-	    :caller 'my/org-ref-ivy-open-note))
+#+begin_src emacs-lisp
+  (defun km/org-capture-refile (&optional arg default-buffer rfloc msg)
+    "Copied from `org-capture' to support arguments."
+    (unless (eq (org-capture-get :type 'local) 'entry)
+      (user-error "Refiling from a capture buffer makes only sense \
+       for `entry'-type templates"))
+    (let* ((base (or (buffer-base-buffer) (current-buffer)))
+           (pos (make-marker))
+           (org-capture-is-refiling t)
+           (kill-buffer (org-capture-get :kill-buffer 'local))
+           (jump-to-captured (org-capture-get :jump-to-captured 'local)))
+      (set-marker pos (save-excursion (org-back-to-heading t) (point)) base)
+      (org-capture-put :kill-buffer nil :jump-to-captured nil)
+      (org-capture-finalize)
+      (save-window-excursion
+        (with-current-buffer base
+          (org-with-point-at pos
+            (org-refile arg default-buffer rfloc msg))))
+      (when kill-buffer
+        (with-current-buffer base (save-buffer))
+        (kill-buffer base))
+      (when jump-to-captured (org-capture-goto-last-stored))))
 
-;; Template used to create a new note.
-;; TODO: Add #+roam_key to support citation backlinks
-(setq bibtex-completion-notes-template-multiple-files
-      "#+TITLE: (${year}) ${title} [${author-or-editor}]
+  (defun km/refile-direct (file headline &optional arg)
+    (let* ((buffer (or (find-buffer-visiting file)
+                       (find-file-noselect file)))
+           (pos (when headline (with-current-buffer buffer
+                                 (org-find-exact-headline-in-buffer headline))))
+           (filepath (buffer-file-name buffer))
+           (rfloc (cond ((and headline pos)
+                         (list headline filepath nil pos))
+                        ((not headline)
+                         (list (file-name-nondirectory filepath) filepath nil nil))
+                        ((and headline (not pos))
+                         (error "Can't find headline `%s'" headline)))))
+      (cond ((derived-mode-p 'org-agenda-mode)
+             (org-agenda-refile arg rfloc))
+            ((derived-mode-p 'org-capture-mode)
+             (km/org-capture-refile arg rfloc))
+            (t
+             (org-refile arg nil rfloc )))
+      (if (buffer-narrowed-p) (widen))))
 
-,* (${year}) ${title} [${author-or-editor}]
+  (defun km/refile-with-targets (targets &optional arg)
+    "Refile item at point to any location given in TARGETS."
+    (let ((org-refile-targets targets)
+          (org-refile-history nil))
+      (cond ((derived-mode-p 'org-agenda-mode)
+             (org-agenda-refile))
+            ((derived-mode-p 'org-capture-mode)
+             (km/org-capture-refile))
+            (t
+             (org-refile)))
+      (if (buffer-narrowed-p) (widen))))
+
+  (defun km/org-delete-item ()
+    "Delete the item at point using `org-cut-subtree' or `org-agenda-kill'."
+    (interactive)
+    (if (derived-mode-p 'org-agenda-mode)
+        (org-agenda-kill)
+      (org-cut-subtree)))
+
+  (defun km/org-rename-item (item)
+    "Rename the item at point to ITEM and move the point to the end of the line."
+    (interactive (list
+                  (read-string "Item: "
+                               (substring-no-properties (org-get-heading t t t t)))))
+    (org-back-to-heading)
+    (replace-string (org-get-heading t t t t) item))
+
+
+  (defun km/org-focus ()
+    "Copied from ~org-toggle-narrow-to-subtree~ to recenter the headline on widen."
+    (interactive)
+    (if (buffer-narrowed-p)
+        (progn (widen) (recenter) (message "Buffer widen"))
+      (org-narrow-to-subtree)
+      (message "Buffer narrowed to current subtree")))
+
+  (defhydra km/org-refile-hydra (:foreign-keys run :color blue :hint nil)
+    "
+    ^Refile To^       ^Update^         ^Go To^               ^Display^                   ^Tools^
+  ──^─────────^───────^──────^─────────^─────^───────────────^───────^───────────────────^─────^────────────────
+    _r n_: next       _S_: schedule    _g n_: next           _SPC n_: toggle narrow      _t w_: insert web link
+    _r s_: someday    _D_: deadline    _g s_: someday        _SPC t_: todo tree          _t f_: correct word
+    _r p_: project    _d_: delete      _g p_: project        ^   ^                       _t c_: clock hydra
+    _r m_: media      _R_: rename      _g m_: media          _SPC a_: agenda             ^   ^
+    ^   ^             ^ ^              _g i_: inbox          ^   ^                       _t s_: store link
+    ^   ^             ^ ^              _g l_: last refile    ^   ^                       _t i_: insert link
+  "
+    ("r n" (km/refile-direct km/org-gtd-next-file "Next Actions"))
+    ("r s" (km/refile-direct km/org-gtd-someday-file "Someday"))
+    ("r p" (km/refile-with-targets km/org-gtd-project-targets))
+    ("r m" (km/refile-with-targets '((km/org-gtd-media-file :level . 2))))
+    ("S" org-schedule)
+    ("D" org-deadline)
+    ("d" km/org-delete-item)
+    ("R" km/org-rename-item)
+    ("g n" (find-file km/org-gtd-next-file))
+    ("g s" (find-file km/org-gtd-someday-file))
+    ("g p" (counsel-find-file km/org-gtd-projects-dir))
+    ("g m" (find-file km/org-gtd-media-file))
+    ("g i" (find-file km/org-gtd-inbox-file))
+    ("g l" org-refile-goto-last-stored)
+    ("SPC n" km/org-focus)
+    ("SPC t" org-show-todo-tree)
+    ("SPC a" org-agenda)
+    ("t w" org-web-tools-insert-link-for-url)
+    ("t f" flyspell-correct-next)
+    ("t c" km/org-clock-hydra/body)
+    ("t s" org-store-link)
+    ("t i" org-insert-link)
+    ("q" nil "quit"))
+
+  (defhydra km/org-clock-hydra (:foreign-keys run :color blue :hint nil)
+    "
+  ^Clock^
+  ──^────────────────────────────────────────────────────────────────────────────────────────────────────
+  _s_: start
+  _e_: end
+  _c_: cancel
+  _u_: update time
+  _g_: goto
+  "
+    ("s" org-clock-in)
+    ("e" org-clock-out)
+    ("c" org-clock-cancel)
+    ("u" org-clock-update-time-maybe)
+    ("g" org-clock-goto)
+    ("q" nil "quit"))
+
+  (global-set-key (kbd "C-c m") 'km/org-refile-hydra/body)
+  (evil-define-key '(normal visual) 'global " " 'km/org-refile-hydra/body)
+#+end_src
+
+
+**** References
+
+- [[https://mollermara.com/blog/Fast-refiling-in-org-mode-with-hydras/][Fast refiling in org-mode with hydras | Josh Moller-Mara]]
+- [[http://www.howardism.org/Technical/Emacs/getting-more-boxes-done.html][Getting Boxes Done, the Code]]
+
+*** org-ref
+#+begin_src emacs-lisp
+  (use-package org-ref
+    :config
+    (setq org-ref-notes-function 'org-ref-notes-function-many-files
+          org-ref-prefer-bracket-links t)
+    :after counsel)
+
+  (defun my/org-ref-ivy-open-note (&optional arg)
+    "ivy function for opening a note"
+    (interactive "P")
+    (setq org-ref-bibtex-files (org-ref-find-bibliography))
+    (setq org-ref-ivy-cite-marked-candidates '())
+
+    (ivy-read "Open: " (orhc-bibtex-candidates)
+              :require-match t
+              :keymap org-ref-ivy-cite-keymap
+              :re-builder org-ref-ivy-cite-re-builder
+              :action 'or-ivy-bibtex-open-notes
+              :caller 'my/org-ref-ivy-open-note))
+
+  ;; Template used to create a new note.
+  (setq bibtex-completion-notes-template-multiple-files
+        "#+TITLE: (${year}) ${title} [${author-or-editor}]
+  ,#+LAST_MODIFIED: []
+  ,#+ROAM_KEY: cite:${=key=}
+
+  ,* (${year}) ${title} [${author-or-editor}]
+    :PROPERTIES:
+    :CUSTOM_ID: ${=key=}
+    :AUTHOR:    ${author-or-editor}
+    :YEAR:      ${year}
+    :URL:       ${url}
+    :END:
+
+  - cite:${=key=}
+
+  ")
+#+end_src
+
+*** org-journal
+#+begin_src emacs-lisp
+  (use-package org-journal
+    :custom
+    (org-journal-dir km/org-journal-dir)
+    (org-journal-date-format "%d.%m %A")
+    (org-journal-file-type 'monthly)
+    (org-journal-file-format "%Y%m.org")
+    (org-journal-created-property-timestamp-format (org-time-stamp-format nil t)))
+
+  (defun org-journal-file-header-func (time)
+    "Custom function to create journal header."
+    (concat
+     (pcase org-journal-file-type
+       (`daily   (format-time-string "#+TITLE: %A %d.%m.%Y --- Daily Journal\n#+STARTUP: showall indent\n\n" time))
+       (`weekly  (format-time-string "#+TITLE: W%W %Y --- Weekly Journal\n#+STARTUP: fold indent\n\n" time))
+       (`monthly (format-time-string "#+TITLE: %B %Y --- Monthly Journal\n#+STARTUP: fold indent\n\n" time))
+       (`yearly  (format-time-string "#+TITLE: %Y --- Yearly Journal\n#+STARTUP: fold indent\n\n" time)))))
+
+  (setq org-journal-file-header 'org-journal-file-header-func)
+#+end_src
+
+*** org-web-tools
+#+begin_src emacs-lisp
+  (use-package org-web-tools)
+#+end_src
+
+*** org-roam
+#+begin_src emacs-lisp
+  (use-package org-roam
+    :hook
+    (after-init . org-roam-mode)
+    :custom
+    (org-roam-directory km/org-roam-dir)
+    :custom-face
+    (org-roam-link ((t (:inherit link :foreground ,(doom-color 'red)))))
+    (org-roam-link-current ((t (:inherit link :foreground ,(doom-color 'cyan)))))
+    :bind  (:map org-roam-mode-map
+                 (("C-c n l" . org-roam)
+                  ("C-c n f" . org-roam-find-file)
+                  ("C-c n b" . org-roam-switch-to-buffer)
+                  ("C-c n g" . org-roam-graph-show)
+                  ("C-c n b" . org-roam-buffer-toggle-display))
+                 :map org-mode-map
+                 (("C-c n i" . org-roam-insert))))
+
+  (setq org-roam-capture-templates
+        '(("d" "default" plain #'org-roam-capture--get-point
+           ""
+           :file-name "%<%Y%m%d-%H%M%S>--${slug}"
+           :head "#+TITLE: ${title}
+  ,#+LAST_MODIFIED: []
+  ,#+STARTUP: indent
+
+  - Contexts :: %?
+
+  ,* ${title}
   :PROPERTIES:
-  :Custom_ID: ${=key=}
-  :Author:    ${author-or-editor}
-  :Year:      ${year}
-  :Doi:       ${doi}
-  :Url:       ${url}
+  :CREATED: %U
+  :END:"
+           :empty-lines-after 2
+           :unarrowed t)
+          ("n" "default (new)" plain #'org-roam-capture--get-point
+           ""
+           :file-name "%<%Y%m%d-%H%M%S>--${slug}"
+           :head ":PROPERTIES:
+  :CREATED: %U
   :END:
+  ,#+TITLE: ${title}
+  ,#+LAST_MODIFIED: []
+  ,#+STARTUP: indent content
 
-- cite:${=key=}
+  - Contexts :: %?"
+           :empty-lines-after 2
+           :unarrowed t
+           :create-id t)
+          ("c" "context" plain #'org-roam-capture--get-point
+           ""
+           :file-name "%<%Y%m%d-%H%M%S>--${slug}"
+           :head "#+TITLE: ${title}
+  ,#+LAST_MODIFIED: []
+  ,#+ROAM_TAGS: context
+  ,#+STARTUP: indent
 
-")
-
-
-
-;;; Org Journal
-
-(use-package org-journal
-  :custom
-  (org-journal-dir km-journal-path)
-  (org-journal-date-format "%d.%m %A")
-  (org-journal-file-type 'monthly)
-  (org-journal-file-format "%Y%m.org"))
-
-(defun org-journal-file-header-func (time)
-  "Custom function to create journal header."
-  (concat
-   (pcase org-journal-file-type
-     (`daily   (format-time-string "#+TITLE: %A %d.%m.%Y --- Daily Journal\n#+STARTUP: showeall indent\n\n" time))
-     (`weekly  (format-time-string "#+TITLE: W%W %Y --- Weekly Journal\n#+STARTUP: fold indent\n\n" time))
-     (`monthly (format-time-string "#+TITLE: %B %Y --- Monthly Journal\n#+STARTUP: fold indent\n\n" time))
-     (`yearly  (format-time-string "#+TITLE: %Y --- Yearly Journal\n#+STARTUP: fold indent\n\n" time)))))
-
-(setq org-journal-file-header 'org-journal-file-header-func)
-
-
-;;; Org web tools
-
-(use-package org-web-tools)
-
-
-;;; Org Roam
-
-(use-package org-roam
-  :hook
-  (after-init . org-roam-mode)
-  :custom
-  (org-roam-directory km-knowledge-path)
-  :custom-face
-  (org-roam-link ((t (:inherit org-link
-			       :foreground "SpringGreen1"
-			       :weight bold))))
-  :bind  (:map org-roam-mode-map
-	       (("C-c n l" . org-roam)
-    		("C-c n f" . org-roam-find-file)
-		("C-c n b" . org-roam-switch-to-buffer)
-		("C-c n g" . org-roam-graph-show)
-		("C-c n b" . org-roam-buffer-toggle-display)
-		)
-	       :map org-mode-map
-	       (("C-c n i" . org-roam-insert))))
-
-
-(setq org-roam-capture-templates
-      '(("d" "default" plain #'org-roam-capture--get-point
-	 ""
-	 :file-name "%<%Y%m%d-%H%M%S>-${slug}"
-	 :head "#+TITLE: ${title}
-
-- Contexts :: %?
-
-,* ${title}
+  ,* ${title}
   :PROPERTIES:
-  :Created: %<%Y%m%d%H%M%S>
+  :CREATED: %U
   :END:"
-	 :empty-lines-after 2
-	 :unarrowed t)
-	("c" "context" plain #'org-roam-capture--get-point
-	 ""
-	 :file-name "%<%Y%m%d-%H%M%S>-${slug}"
-	 :head "#+TITLE: ${title}
-	 
-,* ${title} :context:
-  :PROPERTIES:
-  :Created: %<%Y%m%d%H%M%S>
-  :END:"
-	 :empty-lines-after 1
-	 :immediate-finish t)))
+           :empty-lines-after 1
+           :immediate-finish t)))
+#+end_src
 
-;; (setq org-capture-templates
-;;       '(("n" "Knowledge note" plain
-;; 	 (file (lambda () (expand-file-name
-;; 			   (format-time-string "%Y%m%d-%H%M%S.org" nil t)
-;; 			   km-knowledge-files)))
-;; 	 "#+TITLE: %?\n#+FILETAGS: ")
-;; 	("d" "Daily note" entry
-;; 	 (file "")
-;; 	 ""
-;; 	 :prepend t
-;; 	 :jump-to-captured t
-;; 	 :empty-lines-after 2)))
+*** org-edna
 
-;; System specific configuration
+#+begin_src emacs-lisp
+  (use-package org-edna
+    :config
+    (org-edna-mode))
 
-;; macOS
-;; Command: Super
-;; Left option: Meta
-;; Right option: Default (compose)
-(cond ((eq system-type 'darwin)
-       (setq mac-command-modifier 'super
-	     mac-option-modifier 'meta
-	     mac-right-option-modifier nil)))
+  (defun org-edna-action/promote! (last-entry)
+    (org-promote-subtree))
 
-(add-to-list `default-frame-alist '(ns-transparent-titlebar . t))
-(add-to-list `default-frame-alist '(ns-appearance . dark))
+  (defun org-edna-action/demote! (last-entry)
+    (org-demote-subtree))
+#+end_src
 
-;; Hide buffer title and icon in titlebar
-(setq ns-use-proxy-icon nil)
-(setq frame-title-format nil)
+*** org-download
 
-;; Remove internal border (shows as gap between modeline and window border)
-(set-frame-parameter nil 'internal-border-width 0)
+Easily move images from some point A to a point B.
 
-;;; init.el ends here
+#+begin_src emacs-lisp
+  (use-package org-download)
+#+end_src
 
+** System specific configuration
+*** macOS
+
+Use the command key as Super modifier and the left option key as Meta modifier.
+The right option key is not intercepted by Emacs and uses the systems default.
+On macOS, this allows composing of special characters.
+
+#+begin_src emacs-lisp
+  (cond ((eq system-type 'darwin)
+         (setq mac-command-modifier 'super
+               mac-option-modifier 'meta
+               mac-right-option-modifier nil)))
+
+  (add-to-list `default-frame-alist '(ns-transparent-titlebar . t))
+  (add-to-list `default-frame-alist '(ns-appearance . dark))
 #+end_src

@@ -30,6 +30,8 @@
 (setq straight-use-package-by-default t)
 
 ;; Load all Org files in the user's emacs directory.
-(mapc #'org-babel-load-file (directory-files user-emacs-directory t "\\.org$"))
+;; (mapc #'org-babel-load-file (directory-files user-emacs-directory t "\\.org$"))
 
-;;; init.el ends here
+(org-babel-load-file (expand-file-name "main.org" user-emacs-directory) nil)
+
+;;; init.el ends he
