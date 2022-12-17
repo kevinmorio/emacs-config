@@ -1,6 +1,9 @@
 #+TITLE: Kevin's Emacs configuration
-#+LAST_MODIFIED: [2022-12-17 Sat 21:23]
+#+LAST_MODIFIED: [2022-12-17 Sat 21:39]
 #+STARTUP: indent
+
+#+attr_org: :width 600
+[[file:./assets/screenshot.png]]
 
 * Todos
 ** DONE Revise folder paths
@@ -10,7 +13,7 @@
 ** DONE Remove org-roam-link highlight
 ** DONE Adopt org-capture templates for new approach
 *** DONE Revise older notes to new format
-** TODO Add screenshot of setup
+** DONE Add screenshot of setup
 ** DONE Use org-expiry only in some files
 ** TODO Silence warnings about unknown variables and functions
 ** TODO Fix clarify template for use in agenda
