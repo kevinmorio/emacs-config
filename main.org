@@ -1,5 +1,5 @@
 #+TITLE: Kevin's Emacs configuration
-#+LAST_MODIFIED: [2021-07-18 Sun 17:28]
+#+LAST_MODIFIED: [2022-12-17 Sat 21:23]
 #+STARTUP: indent
 
 * Todos
@@ -25,6 +25,9 @@ This doesn't seem to be possible directly.
 ** TODO Implement custom initial folding of source code blocks
 
 See [[https://emacs.stackexchange.com/questions/44914/choose-individual-startup-visibility-of-org-modes-source-blocks][org babel - Choose individual startup visibility of org-mode's source blocks - Emacs Stack Exchange]].
+** TODO Fix org-ref's opening of PDF files
+** TODO Switch from org-ref to org-cite
+** TODO Fix capture in journal appending logbook after content
 
 
 * Configuration
@@ -100,6 +103,9 @@ Use hydras for efficient keybindings.
 
   ;; Set language such that flyspell uses the correct dictionary.
   (setenv "LANG" "en_US.UTF-8")
+
+  ;; Set GNUPGHOME
+  (setenv "GNUPGHOME" "~/.local/share/gnupg")
 #+end_src
 
 ** Unclutter
@@ -180,6 +186,7 @@ Use hydras for efficient keybindings.
           recentf-max-menu-items 15)
     (recentf-mode))
 
+  (setq epg-pinentry-mode 'loopback)
 #+end_src
 
 ** Font settings
@@ -435,37 +442,55 @@ To avoid this, we wrap ~undo-tree-redo~ into ~save-excursion~.
 
 #+begin_src emacs-lisp
   (setq reftex-default-bibliography km-bibliography-files)
-  
+
   (setq org-ref-default-bibliography km-bibliography-files
         org-ref-bibliography-notes km-note-path
         org-ref-pdf-directory km-library-path)
-  
+
   (setq bibtex-completion-bibliography km-bibliography-files
         bibtex-completion-notes-path km-note-path
         bibtex-completion-library-path km-library-path
         bibtex-completion-pdf-field "file")
-  
-  (defun my/org-ref-open-pdf-at-point ()
-    "Open the pdf for bibtex key under point if it exists."
-    (interactive)
-    (let* ((results (org-ref-get-bibtex-key-and-file))
+
+  ;; (defun my/org-ref-open-pdf-at-point ()
+  ;;   "Open the pdf for bibtex key under point if it exists."
+  ;;   (interactive)
+  ;;   (let* ((results (org-ref-get-bibtex-key-and-file))
+  ;;          (key (car results))
+  ;;          (pdf-file (car (bibtex-completion-find-pdf key))))
+  ;;     (message "my/org-ref-open-pdf-at-point %s" key)
+  ;;     (if (file-exists-p pdf-file)
+  ;;         (org-open-file pdf-file)
+  ;;       (message "No PDF found for %s" key))))
+
+  (defun km/bibtex-completion-find-relative-pdf (&optional key)
+    "Finds the pdf file of the entry with key `KEY' relative to the bibliography directory."
+    (let* ((results (org-ref-get-bibtex-key-and-file key))
            (key (car results))
-           (pdf-file (car (bibtex-completion-find-pdf key))))
-      (message "my/org-ref-open-pdf-at-point %s" key)
+           (bibliography (cdr results))
+           (bibliography-path (f-dirname bibliography))
+           (file-path (bibtex-completion-get-value bibtex-completion-pdf-field (bibtex-completion-get-entry key)))
+           (pdf-file (f-join bibliography-path file-path)))
       (if (file-exists-p pdf-file)
-          (org-open-file pdf-file)
+          pdf-file
         (message "No PDF found for %s" key))))
-  
-  (setq org-ref-open-pdf-function 'my/org-ref-open-pdf-at-point)
-  
+
+  (defun km/org-ref-open-pdf-at-point ()
+    (interactive)
+    (if-let ((pdf-file (km/bibtex-completion-find-relative-pdf)))
+        (org-open-file pdf-file)))
+
+  ;; TODO: This doesn't appear to have any effect anymore.
+  (setq org-ref-open-pdf-function 'km/org-ref-open-pdf-at-point)
+
   (setq org-ref-completion-library 'org-ref-ivy-cite)
-  
+
   (defun km/redo-at-point (&optional arg)
     "Undo the last ARG undos without changing the current point."
     (interactive "*p")
     (save-excursion
       (undo-tree-redo arg)))
-  
+
   (defun km/org-expiry-insinuate-local ()
     "Add LOCAL hooks and activate advices for org-expiry."
     (interactive "P")
@@ -475,10 +500,10 @@ To avoid this, we wrap ~undo-tree-redo~ into ~save-excursion~.
     (add-hook 'org-insert-heading-hook 'org-expiry-insert-created 0 t)
     (add-hook 'org-after-todo-state-change-hook 'org-expiry-insert-created 0 t)
     (add-hook 'org-after-tags-change-hook 'org-expiry-insert-created 0 t))
-  
+
   (defun km/org-expiry-insinuate-in-file ()
     "Calls `org-expiry-insinuate` when the `auto-expiry` option is set to `t` in the file.
-       For example, '#+OPTIONS: auto-expiry:t'"
+         For example, '#+OPTIONS: auto-expiry:t'"
     (catch 'found
       (dolist (value (cdr (assoc "OPTIONS" (org-collect-keywords '("OPTIONS")))))
         (when (string-match "auto-expiry:t" value)
@@ -486,27 +511,27 @@ To avoid this, we wrap ~undo-tree-redo~ into ~save-excursion~.
           (message "org-expiry insinuated for current buffer (auto-expiry:t)")
           (throw 'found t)))
       nil))
-  
+
   (defun km/org-capture-maybe-create-id ()
     "Create id if `create-id` property is set on capture template."
     (when (org-capture-get :create-id)
       (org-id-get-create)))
-  
+
   (defun km/org-capture-maybe-insert-created ()
     "Insert CREATED property if `insert-created` property is set on capture template."
     (when (org-capture-get :insert-created)
       (org-expiry-insert-created)))
-  
+
   (defun km/org-babel-redisplay-images ()
     "Redisplay inline images when there are overlays in the current buffer."
     (when org-inline-image-overlays
       (org-redisplay-inline-images)))
-  
+
   (use-package org
-    ;; :straight org-plus-contrib
     :mode
     ("\\.org\\'" . org-mode)
     :custom
+    (org-time-stamp-custom-formats nil)
     (org-return-follow-link t)
     (org-babel-load-languages
      '((emacs-lisp . t)
@@ -526,6 +551,7 @@ To avoid this, we wrap ~undo-tree-redo~ into ~save-excursion~.
     (org-id-link-to-org-use-id 'create-if-interactive-and-no-custom-id)
     (org-attach-id-dir "~/Nextcloud/org/data")
     (org-attach-store-link-p 'attached)
+    (org-export-backends '(ascii html icalendar latex md odt org))
     (org-archive-location "~/Nextcloud/org/archive/%s_archive::")
     (org-highlight-sparse-tree-matches nil)
     :bind (("C-c t" . counsel-org-tags)
@@ -539,9 +565,6 @@ To avoid this, we wrap ~undo-tree-redo~ into ~save-excursion~.
     (fixed-pitch ((t (:family "PragmataPro Mono Liga"))))
     :config
     (setq org-tags-column 0)
-    (require `org-expiry)
-    ;; (org-expiry-insinuate)
-    (setq org-expiry-inactive-timestamps t)
     (add-to-list 'org-structure-template-alist '("t" . "theorem"))
     (add-to-list 'org-structure-template-alist '("d" . "definition"))
     (add-to-list 'org-structure-template-alist '("co" . "corollary"))
@@ -550,7 +573,6 @@ To avoid this, we wrap ~undo-tree-redo~ into ~save-excursion~.
           '(("c" tags "+context"
              ((org-agenda-prefix-format "")))))
     (setq org-format-latex-options (plist-put org-format-latex-options :scale 1.25))
-    (require 'org-tempo)
     (defun km/style-org ()
       (variable-pitch-mode t)
       ;; (visual-line-mode)
@@ -574,7 +596,7 @@ To avoid this, we wrap ~undo-tree-redo~ into ~save-excursion~.
       (set-face-attribute 'org-level-2 nil :weight 'bold)
       (set-face-attribute 'org-level-3 nil :weight 'bold)
       (set-face-attribute 'secondary-selection nil :background 'unspecified :foreground "red1" :weight 'bold))
-  
+
     (add-hook 'org-mode-hook #'km/org-expiry-insinuate-in-file)
     (add-hook 'org-mode-hook #'km/style-org)
     (add-hook 'org-capture-mode-hook #'evil-insert-state)
@@ -582,13 +604,22 @@ To avoid this, we wrap ~undo-tree-redo~ into ~save-excursion~.
     (add-hook 'org-capture-mode-hook #'km/org-capture-maybe-insert-created)
     (add-hook 'org-agenda-mode-hook #'hack-dir-local-variables-non-file-buffer)
     (add-hook 'org-babel-after-execute-hook #'km/org-babel-redisplay-images))
-  
-    ;;; Auto update 'LAST_MODIFIED' property in org files if it is present in the first 8 lines.
-    (require 'time-stamp)
-  (setq time-stamp-pattern (format "#\\+LAST_MODIFIED: %s$" (regexp-quote (org-time-stamp-format t t))))
+
+      ;;; Auto update 'last_modified|LAST_MODIFIED' property in org files if it is present in the first 8 lines.
+  (require 'time-stamp)
+  (setq time-stamp-pattern (format "#\\+\\(last_modified\\|LAST_MODIFIED\\): %s$" (regexp-quote (org-time-stamp-format t t))))
   (add-hook 'write-file-functions 'time-stamp)
-  
-  (use-package org-contrib)
+
+  (use-package org-contrib
+    :config
+    (require `org-expiry)
+    (setq org-expiry-inactive-timestamps t)
+    (require 'org-tempo))
+
+  (evil-define-key 'normal org-mode-map
+    (kbd "TAB") 'org-cycle)
+
+  (require 'org-lint-dir)
 #+end_src
 
 *** GTD setup
@@ -723,9 +754,29 @@ Capture mode is invoked with ~C-c c~
   ;;   (with-current-buffer (current-buffer)
   ;;     (org-with-wide-buffer
   ;;      (org-back-to-heading))))
+  (defun km/org-find-weekly ()
+    (goto-char (org-find-olp
+                (list "Weekly" (number-to-string (calendar-extract-year (calendar-current-date)))) t)))
+
+  (defun km/iso-week-to-time (year week day)
+    (pcase-let ((`(,m ,d ,y)
+                 (calendar-gregorian-from-absolute
+                  (calendar-iso-to-absolute (list week day year)))))
+      (encode-time 0 0 0 d m y)))
+
+  (defun km/org-week-range (&optional date)
+    (let* ((iso-date (calendar-iso-from-absolute
+                      (calendar-absolute-from-gregorian (or date (calendar-current-date)))))
+           (year (calendar-extract-year iso-date))
+           (week (nth 0 iso-date))
+           (start (iso-week-to-time year week 1))
+           (end (iso-week-to-time year week 7)))
+      (concat (format-time-string (org-time-stamp-format nil t) start)
+              "--"
+              (format-time-string (org-time-stamp-format nil t) end))))
 
   (setq org-capture-templates
-        `(("i" "Inbox" entry (file+heaedline ,km/org-gtd-inbox-file "Inbox")
+        `(("i" "Inbox" entry (file+headline ,km/org-gtd-inbox-file "Inbox")
            "* %?"
            :insert-created t
            :empty-lines 1)
@@ -733,7 +784,7 @@ Capture mode is invoked with ~C-c c~
           ;;         "%(with-current-buffer (org-capture-get :original-buffer) (km/org-get-subtree))")
           ("n" "Next" entry (file+headline ,km/org-gtd-next-file "Next Actions")
            "* NEXT %?\n:PROPERTIES:\n:CREATED: %U
-  :TRIGGER: children todo!(NEXT) promote! chain!(TRIGGER)\n:END:\n\n"
+    :TRIGGER: children todo!(NEXT) promote! chain!(TRIGGER)\n:END:\n\n"
            :empty-lines 1)
           ("s" "Someday" entry (file+headline ,km/org-gtd-someday-file "Someday")
            "* SOMEDAY %?"
@@ -743,6 +794,23 @@ Capture mode is invoked with ~C-c c~
            "* %<%H:%M> %?"
            :jump-to-captured t
            :clock-in t
+           :clock-resume t
+           :clock-keep nil
+           :insert-created t)
+          ("p" "Journal (past)" entry (file+olp+datetree ,km/org-journal-file)
+           "* %<%H:%M> %?\n:LOGBOOK:\nCLOCK: %U--%^U => 0:00\n:END:"
+           :empty-lines-after 1
+           :jump-to-captured t
+           :time-prompt t
+           :insert-created t)
+          ("o" "Org Protocol" entry (file+headline "~/Nextcloud/org/resources/capture.org" "Captures")
+           "* %:annotation\n\n %i"
+           :empty-lines 1
+           :insert-created t)
+          ("w" "Weekly" entry (file+function ,km/org-journal-file km/org-find-weekly)
+           "* %<%Y-W%V>\n\n%(km/org-week-range)\n\n%?"
+           :jump-to-captured t
+           :empty-lines-before 1
            :insert-created t)))
 
   ;; (defun km/org-capture-finalize ()
@@ -789,7 +857,6 @@ Headlines with a done todo keyword are excluded.
         org-outline-path-complete-in-steps nil
         org-refile-allow-creating-parent-nodes 'confirm)
 #+end_src
-
 
 **** Quick refiling using hydras
 
@@ -875,6 +942,23 @@ To move things around, we define a hydra.
       (org-narrow-to-subtree)
       (message "Buffer narrowed to current subtree")))
 
+  (defun km/counsel-org-goto-agenda-files ()
+    "Copied from ~counsel-prg-goto-all~ to go to a different location in any org file in the agenda."
+    (interactive)
+    (let (entries)
+      (dolist (f (org-agenda-files))
+        (with-current-buffer (find-file-noselect f)
+          (when (derived-mode-p 'org-mode)
+            (setq entries
+                  (nconc entries
+                         (counsel-outline-candidates
+                          (cdr (assq 'org-mode counsel-outline-settings))
+                          (counsel-org-goto-all--outline-path-prefix)))))))
+      (ivy-read "Goto: " entries
+                :history 'counsel-org-goto-history
+                :action #'counsel-org-goto-action
+                :caller 'counsel-org-goto-all)))
+
   (defhydra km/org-refile-hydra (:foreign-keys run :color blue :hint nil)
     "
     ^Refile To^       ^Update^         ^Go To^               ^Display^                   ^Tools^
@@ -882,9 +966,11 @@ To move things around, we define a hydra.
     _r n_: next       _S_: schedule    _g n_: next           _SPC n_: toggle narrow      _t w_: insert web link
     _r s_: someday    _D_: deadline    _g s_: someday        _SPC t_: todo tree          _t f_: correct word
     _r p_: project    _d_: delete      _g p_: project        ^   ^                       _t c_: clock hydra
-    _r m_: media      _R_: rename      _g m_: media          _SPC a_: agenda             ^   ^
+    _r m_: media      _R_: rename      _g m_: media          _SPC a_: agenda             _t r_: roam hydra
     ^   ^             ^ ^              _g i_: inbox          ^   ^                       _t s_: store link
-    ^   ^             ^ ^              _g l_: last refile    ^   ^                       _t i_: insert link
+    ^   ^             ^ ^              _g j_: journal        _c_: capture                _t i_: insert link
+    ^   ^             ^ ^              _g a_: agenda         ^   ^                       ^   ^
+    ^   ^             ^ ^              _g l_: last refile    ^   ^                       ^   ^
   "
     ("r n" (km/refile-direct km/org-gtd-next-file "Next Actions"))
     ("r s" (km/refile-direct km/org-gtd-someday-file "Someday"))
@@ -899,13 +985,17 @@ To move things around, we define a hydra.
     ("g p" (counsel-find-file km/org-gtd-projects-dir))
     ("g m" (find-file km/org-gtd-media-file))
     ("g i" (find-file km/org-gtd-inbox-file))
+    ("g j" (find-file km/org-journal-file))
+    ("g a" (km/counsel-org-goto-agenda-files))
     ("g l" org-refile-goto-last-stored)
     ("SPC n" km/org-focus)
     ("SPC t" org-show-todo-tree)
     ("SPC a" org-agenda)
+    ("c" org-capture)
     ("t w" org-web-tools-insert-link-for-url)
     ("t f" flyspell-correct-next)
     ("t c" km/org-clock-hydra/body)
+    ("t r" km/org-roam-hydra/body)
     ("t s" org-store-link)
     ("t i" org-insert-link)
     ("q" nil "quit"))
@@ -927,10 +1017,24 @@ To move things around, we define a hydra.
     ("g" org-clock-goto)
     ("q" nil "quit"))
 
+  (defhydra km/org-roam-hydra (:foreign-keys run :color blue :hint nil)
+    "
+  ^Roam^
+  ──^────────────────────────────────────────────────────────────────────────────────────────────────────
+  _c_: capture
+  _f_: find
+  _i_: insert
+  _b_: toggle buffer
+  "
+    ("c" org-roam-capture)
+    ("f" org-roam-node-find)
+    ("i" org-roam-node-insert)
+    ("b" org-roam-buffer-toggle)
+    ("q" nil "quit"))
+
   (global-set-key (kbd "C-c m") 'km/org-refile-hydra/body)
   (evil-define-key '(normal visual) 'global " " 'km/org-refile-hydra/body)
 #+end_src
-
 
 **** References
 
@@ -1006,67 +1110,53 @@ To move things around, we define a hydra.
 
 *** org-roam
 #+begin_src emacs-lisp
+  ;; (cl-defmethod org-roam-node-parenthized-tags ((node org-roam-node))
+  ;;   (if-let ((tags (org-roam-node-tags node)))
+  ;;       (format "(%s)" (mapconcat (lambda (s) s) tags ", "))
+  ;;     ""))
+
   (use-package org-roam
+    :init
+    (setq org-roam-v2-ack t)
+    :config
+    ;; (setq org-roam-node-display-template "${parenthized-tags:10} ${title:*}")
+    (setq org-roam-node-display-template "${title} ${tags}")
+
+
+    ;; for org-roam-buffer-toggle
+    ;; Recommendation in the official manual
+    (add-to-list 'display-buffer-alist
+                 '("\\*org-roam\\*"
+                   (display-buffer-in-direction)
+                   (direction . right)
+                   (window-width . 0.33)
+                   (window-height . fit-window-to-buffer)))
     :hook
-    (after-init . org-roam-mode)
+    (after-init . org-roam-setup)
     :custom
     (org-roam-directory km/org-roam-dir)
     :custom-face
     (org-roam-link ((t (:inherit link :foreground ,(doom-color 'red)))))
     (org-roam-link-current ((t (:inherit link :foreground ,(doom-color 'cyan)))))
-    :bind  (:map org-roam-mode-map
-                 (("C-c n l" . org-roam)
-                  ("C-c n f" . org-roam-find-file)
-                  ("C-c n b" . org-roam-switch-to-buffer)
-                  ("C-c n g" . org-roam-graph-show)
-                  ("C-c n b" . org-roam-buffer-toggle-display))
-                 :map org-mode-map
-                 (("C-c n i" . org-roam-insert))))
+    ;; :bind  (:map org-roam-mode-map
+    ;;              (("C-c n l" . org-roam)
+    ;;               ("C-c n f" . org-roam-find-file)
+    ;;               ("C-c n b" . org-roam-switch-to-buffer)
+    ;;               ("C-c n g" . org-roam-graph-show)
+    ;;               ("C-c n b" . org-roam-buffer-toggle-display))
+    ;;              :map org-mode-map
+    ;;              (("C-c n i" . org-roam-insert)))
+    )
 
-  (setq org-roam-capture-templates
-        '(("d" "default" plain #'org-roam-capture--get-point
-           ""
-           :file-name "%<%Y%m%d-%H%M%S>--${slug}"
-           :head "#+TITLE: ${title}
-  ,#+LAST_MODIFIED: []
-  ,#+STARTUP: indent
 
-  - Contexts :: %?
-
-  ,* ${title}
-  :PROPERTIES:
-  :CREATED: %U
-  :END:"
-           :empty-lines-after 2
-           :unarrowed t)
-          ("n" "default (new)" plain #'org-roam-capture--get-point
-           ""
-           :file-name "%<%Y%m%d-%H%M%S>--${slug}"
-           :head ":PROPERTIES:
-  :CREATED: %U
-  :END:
-  ,#+TITLE: ${title}
-  ,#+LAST_MODIFIED: []
-  ,#+STARTUP: indent content
-
-  - Contexts :: %?"
-           :empty-lines-after 2
-           :unarrowed t
-           :create-id t)
-          ("c" "context" plain #'org-roam-capture--get-point
-           ""
-           :file-name "%<%Y%m%d-%H%M%S>--${slug}"
-           :head "#+TITLE: ${title}
-  ,#+LAST_MODIFIED: []
-  ,#+ROAM_TAGS: context
-  ,#+STARTUP: indent
-
-  ,* ${title}
-  :PROPERTIES:
-  :CREATED: %U
-  :END:"
-           :empty-lines-after 1
-           :immediate-finish t)))
+    (setq org-roam-capture-templates
+          '(("d" "default" plain "%?" :if-new
+             (file+head "%<%Y%m%d-%H%M%S>--${slug}.org"
+                        "#+title: ${title}
+    ,#+last_modified: []
+    ,#+startup: indent")
+             :insert-created t
+             :unnarrowed t)))
 #+end_src
 
 *** org-edna

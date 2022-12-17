@@ -1,0 +1,23 @@
+# Directories
+auto-safe-list/**
+backup/**
+recentf/**
+var/**
+undo/**
+straight/**
+transient/**
+eshell/**
+url/**
+**/*~
+
+# Files
+bookmarks
+.org-id-locations
+eln-cache/
+main.el
+main.elc
+custom.el
+org-journal.cache
+org-roam.db
+projectile-bookmarks.eld
+tramp
