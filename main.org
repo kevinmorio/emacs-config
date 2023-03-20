@@ -1,5 +1,5 @@
 #+TITLE: Kevin's Emacs configuration
-#+LAST_MODIFIED: [2022-12-17 Sat 21:39]
+#+LAST_MODIFIED: [2023-03-20 Mon 23:28]
 #+STARTUP: indent
 
 #+attr_org: :width 600
@@ -701,12 +701,12 @@ Specify the files which should be included in the agenda.
                    (org-agenda-cmp-user-defined (km/org-compare-timestamp-property "CREATED"))
                    (org-agenda-sorting-strategy '(user-defined-up))
                    (org-agenda-prefix-format " %i %-25:c")))
+            (tags "project-TODO=\"DONE\"-TODO=\"CANCELED\""
+                  ((org-agenda-overriding-header "Projects")
+                   (org-agenda-prefix-format " %i %-25:c")))
             (tags "inbox"
                   ((org-agenda-overriding-header "To Clarify")
-                   (org-agenda-prefix-format "  ")))
-            (tags "project"
-                  ((org-agenda-overriding-header "Projects")
-                   (org-agenda-prefix-format " %i %-25:c")))))
+                   (org-agenda-prefix-format "  ")))))
           ("b" "Monthly burndown" agenda ""
            ((org-agenda-span 'month)
             (org-agenda-start-day "-14d")
