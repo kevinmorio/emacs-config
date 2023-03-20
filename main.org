@@ -630,15 +630,16 @@ To avoid this, we wrap ~undo-tree-redo~ into ~save-excursion~.
 To easily change the storage locations of the different files, we store them in variables.
 
 #+begin_src emacs-lisp
-  (defvar km/org-directory        "~/Nextcloud/org"                     "Primary org directory")
-  (defvar km/org-journal-file     "~/Nextcloud/org/journal/journal.org" "Destination of the capture process")
-  (defvar km/org-resources-dir    "~/Nextcloud/org/resources"           "Directory of resources")
-  (defvar km/org-gtd-directory    "~/Nextcloud/org/gtd"                 "Primary GTD directory")
-  (defvar km/org-gtd-inbox-file   "~/Nextcloud/org/gtd/inbox.org"       "Destination of the capture process")
-  (defvar km/org-gtd-next-file    "~/Nextcloud/org/gtd/next.org"         "Next actions and small projects")
-  (defvar km/org-gtd-someday-file "~/Nextcloud/org/gtd/someday.org"     "Someday / maybe list and possible future projects")
-  (defvar km/org-gtd-media-file   "~/Nextcloud/org/gtd/media.org"       "Bookmarks of anything to checkout in the future")
-  (defvar km/org-gtd-projects-dir "~/Nextcloud/org/gtd/projects"        "Directory of project actions and notes")
+  (defvar km/org-directory         "~/Nextcloud/org"                     "Primary org directory")
+  (defvar km/org-journal-file      "~/Nextcloud/org/journal/journal.org" "Destination of the capture process")
+  (defvar km/org-resources-dir     "~/Nextcloud/org/resources"           "Directory of resources")
+  (defvar km/org-gtd-directory     "~/Nextcloud/org/gtd"                 "Primary GTD directory")
+  (defvar km/org-gtd-inbox-file    "~/Nextcloud/org/gtd/inbox.org"       "Destination of the capture process")
+  (defvar km/org-gtd-next-file     "~/Nextcloud/org/gtd/next.org"         "Next actions and small projects")
+  (defvar km/org-gtd-someday-file  "~/Nextcloud/org/gtd/someday.org"     "Someday / maybe list and possible future projects")
+  (defvar km/org-gtd-media-file    "~/Nextcloud/org/gtd/media.org"       "Bookmarks of anything to checkout in the future")
+  (defvar km/org-gtd-projects-file "~/Nextcloud/org/gtd/projects.org"    "File of project actions and notes")
+  (defvar km/org-gtd-projects-dir  "~/Nextcloud/org/gtd/projects"        "Directory of project actions and notes")
 #+end_src
 
 Specify the files which should be included in the agenda.
@@ -844,11 +845,16 @@ Headlines with a done todo keyword are excluded.
   (setq km/org-resources-targets (->> (directory-files-recursively km/org-resources-dir org-agenda-file-regexp)
                                       (--map `(,it :maxlevel . 9))))
 
+  (setq km/org-roam-targets (->> (directory-files-recursively km/org-roam-dir org-agenda-file-regexp)
+                                      (--map `(,it :maxlevel . 9))))
+
   (setq org-refile-targets (append (list `(,km/org-gtd-next-file :maxlevel . 9)
                                          `(,km/org-gtd-someday-file :level . 0)
+                                         `(,km/org-gtd-projects-file :level . 1)
                                          `(,km/org-gtd-media-file :maxlevel . 2))
                                    km/org-gtd-project-targets
-                                   km/org-resources-targets))
+                                   km/org-resources-targets
+                                   km/org-roam-targets))
 
   (defun km/verify-refile-target ()
     "Exclude headlines with a done todo state from refile targets."
